@@ -1,0 +1,8 @@
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60: 26977 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60: 27054 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60:  5632 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60: 18677 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60: 18654 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60:  5781 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60:  5802 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+/usr/local/R-3.2.1/lib64/R/bin/BATCH: line 60: 18641 Terminated              ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1

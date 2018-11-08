@@ -1,0 +1,166 @@
+
+R version 3.2.1 (2015-06-18) -- "World-Famous Astronaut"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ##Author: Christopher Zarzar
+> ##Created: 7-April-2017
+> 
+> ##NOTES: This script is a Random Forest Sensitivity Analysis using August 2015 UAS data.
+> ## This script is set up so that any classification technique can be set up for 
+> ## a sensitivity analysis using this script
+> ##EDITED CHRIS ZARZAR 5/12/17; Adding capability to run sensitivity analysis across numerous samples size and splitfractions
+> ##EDITED CHRIS ZARZAR 6/14/17; Major changes to loop and configuration to set up to run on Bazooka at HPC. Big change is that a new writeout textfile is created for every loop to make it easier to determine start and end time. 
+> ##EDITED CHRIS ZARZAR 6/27/17; Changed samp size intervals to .1 to speed up the loop. Failures on gri/ drive  required I speed this up to finish in time
+> ##EDITED CHRIS ZARZAR 6/27/17; split up sample ratios between the different computers to decrease processing time. 
+> 
+> 
+> ## load library requirements
+> library("rasclass")
+> library("tools")
+> library("caret")
+Loading required package: lattice
+Loading required package: ggplot2
+> library("randomForest")
+randomForest 4.6-10
+Type rfNews() to see new features/changes/bug fixes.
+> library("mlbench")
+> 
+> set.seed(7)
+> 
+> ## Set up primary vector to loop through all of the dates available
+> loop.files <- c('aug2015','dec2014','dec2015','mar2015','may2015') #completed
+> loop.imgname <- c('bv_3class','rad_3class','ref_3class')
+> for (d in 1:length(loop.files)){
++   date = loop.files[d]
++   var.name = file_path_sans_ext(date)
++   date.name = substr (date,1,7)
++   print (date)
++   for (imgName in loop.imgname){
++     if (imgName == "bv_3class"){
++       img.name <- 'BV'
++     }else if (imgName == "rad_3class"){
++       img.name <- 'Rad'
++     }else if (imgName == "ref_3class"){
++       img.name <- 'Ref'
++     }
++     
++     ## Set up global variables
++     #mainPath <- "C:/Users/chris/OneDrive/Desktop/Research/RWorkspace/"
++     mainPath <- "/gri/general/cmzarzar/RWorkspace/"
++     mt.list <- c(1,2,3)
++     nt.list <- c(1,10,seq(50,1000,by=50))
++     #Set up the number of samples and classification techniques to loop through
++     classMethod <- 'randomForest' ## 'neuralNetwork','supportVector' ## Other options for future sensitivity analyses. 
++     nSamp.list <- seq(50,500,by=30)
++     sampRatio.list <- seq(0.8,0.9,by=0.1)
++     
++     
++     
++     ## Make sure required directories exist 
++     dir.create(paste(mainPath,'lpr/', sep=''), showWarnings = FALSE)
++     dir.create(paste(mainPath,'lpr/lpr_classification_output/', sep=''), showWarnings = FALSE)
++     dir.create(paste(mainPath,'lpr/lpr_classification_output/',date.name,'/', sep=''), showWarnings = FALSE)
++     dir.create(paste(mainPath,'lpr/lpr_classification_output/',date.name,'/',imgName,'/', sep=''), showWarnings = FALSE)
++     dir.create(paste(mainPath,'lpr/lpr_classification_output/',date.name,'/outimgs/',sep=''), showWarnings = FALSE)
++     
++     ## Set paths
++     outClassPath <- paste(mainPath,'lpr/lpr_classification_output/',date.name,'/',imgName,'/', sep='')
++     outImgPath <- paste(mainPath,'lpr/lpr_classification_output/',date.name,'/outimgs/',sep='') 
++     
++     
++     ## Read in the datasets
++     in.data <- read.csv(paste(mainPath,'/datasets/',date.name, img.name,'25_3class.csv', sep = ''), header = TRUE)
++     
++     ## Reclassify columns
++     in.data$NewClass <- NA
++     in.data$NewClass[in.data$Class == "Land"] <- 2
++     in.data$NewClass[in.data$Class == "Water"] <- 1
++     in.data$NewClass[in.data$Class == "Aquatics"] <- 3
++     
++     
++     ## Redirect output
++     sink.cmd <- paste('sink("',outClassPath,'classificationOutput_RF_viking3.txt")',sep='')
++     eval(parse(text=sink.cmd))
++     
++     ## Set up file to write out runtimes to
++     write("Class_Method,Samp_Size,Split_Frac,mt,nt,Start,End,Total", file =paste(outClassPath,'Runtimes','_',classMethod,'_viking3.txt', sep=''), append = TRUE, sep = ",")
++     
++     #Set up testing loops
++     for (nSamp in nSamp.list){
++       for (sampRatio in sampRatio.list){
++         for (mt in mt.list){
++           for (nt in nt.list){
++             start.time <- Sys.time()
++             set.seed(7)
++             for (k in 1:1000){
++               ## Randomly select nSamp samples from each class
++               print(paste("Randomly sampling tables for ", nSamp, " samples"))
++               Aqua.samp <- in.data[sample(which(in.data$Class == "Aquatics") , nSamp) , ]
++               Land.samp <- in.data[sample(which(in.data$Class == "Land") , nSamp) , ]
++               Wat.samp <- in.data[sample(which(in.data$Class == "Water") , nSamp) , ]
++               in.samp <- rbind(Land.samp, Wat.samp, Aqua.samp)
++               
++               
++               ## Assign the columns to the respective values
++               samples <- in.samp[8]
++               band1Val <- in.samp[5] 
++               band2Val <- in.samp[6]
++               band3Val <- in.samp[7]
++               
++               ## Assign only those randomly selected data I need to a new data frame
++               newdata <- data.frame(samples, band1Val, band2Val, band3Val)
++               
++               ## create a raster based on newdata
++               print("Creating new raster dataset from samples")
++               object <- new('rasclass')
++               object <- setRasclassData(newdata, ncols = 3*nSamp, nrows = 1,
++                                         xllcorner = 0, yllcorner = 0, cellsize = 1, NAvalue = -9999,
++                                         samplename = 'NewClass')
++               print("Summary of new raster")
++               print(summary(object))
++               
++               
++               ## Output all returned values to text file
++               print(paste("Classifying for class method " , classMethod, " with ", nSamp, " samples"))
++               
++               ## Classify the data
++               outlist <- list()
++               outlist[[classMethod]] <- classifyRasclass(object, sampRatio, method = classMethod, ntree = nt, mtry= mt)
++               kappa <- outlist[[classMethod]]@kappa
++               overallAccuracy <- outlist[[classMethod]]@overallAccuracy
++               accuracyMatrix <- outlist[[classMethod]]@accuracyMatrix
++               if (k==1){
++                 write("Class_Method,Samp_Size,Split_Frac,Kappa,Overall_Acc,mtry, ntree", file =paste(outClassPath,classMethod,'_',nSamp,'_',sampRatio,'_',mt,'_',nt,'.txt', sep=''), append = TRUE, sep = ",")
++               }
++               write(paste(classMethod,nSamp,sampRatio,kappa,overallAccuracy,mt,nt, sep =','), file =paste(outClassPath,classMethod,'_',nSamp,'_',sampRatio,'_',mt,'_',nt,'.txt', sep=''), append = TRUE, sep = ",")
++             }
++             ## Calculate and write out the run time of the script
++             end.time <- Sys.time()
++             time.taken <- end.time - start.time
++             write(paste(classMethod,nSamp,sampRatio,mt,nt,start.time,end.time,time.taken,sep =','), file =paste(outClassPath,'Runtimes','_',classMethod,'_viking3.txt', sep=''), append = TRUE, sep = ",")
++           }
++         }
++       }
++     }
++     closeAllConnections()
++   }
++ }
+[1] "aug2015"
